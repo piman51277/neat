@@ -6,6 +6,12 @@ interface NetworkOptions {
 	inputSize: number
 	outputSize: number
 	populationSize: number
+	comConfig: {
+		excess: number
+		disjoint: number
+		weightDifference: number
+		threshold:number
+	}
 }
 
 export class Network {
@@ -14,12 +20,19 @@ export class Network {
 	inputSize: number
 	outputSize: number
 	populationSize: number
+	comConfig: {
+		excess: number
+		disjoint: number
+		weightDifference: number
+		threshold:number
+	}
 	constructor(options: NetworkOptions) {
 		this.links = options.links || [];
 		this.nets = options.nets || [];
 		this.inputSize = options.inputSize;
 		this.outputSize = options.outputSize;
 		this.populationSize = options.populationSize;
+		this.comConfig = options.comConfig;
 	}
 	initialize(): void {
 		//wipe current nets
