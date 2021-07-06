@@ -19,19 +19,18 @@ export class Net {
 		this.fitness = 0; //this will be set by the testing function in Network
 	}
 	initialize(inputs: number, outputs: number): void {
-		let nodeId = 0;
 		for (let i = 0; i < inputs; i++) {
 			const node = new Node({
-				id: nodeId,
+				id: this.nodes.length,
 				type: "input",
 				layer: 0
 			});
 			this.nodes.push(node);
-			nodeId++;
+			
 		}
 		for (let i = 0; i < outputs; i++) {
 			const node = new Node({
-				id: nodeId,
+				id: this.nodes.length,
 				type: "output",
 				layer: Infinity
 			});
@@ -43,7 +42,7 @@ export class Net {
 					out: node,
 					enabled: true,
 					weight: Math.random() * 4 - 2,
-					innovation: this.parent.getLinkInnovation(`${selectedInput}_${nodeId}`)
+					innovation: this.parent.getLinkInnovation(`${selectedInput}_${this.nodes.length}`)
 				});
 
 				//add link to referenced nodes
@@ -55,7 +54,7 @@ export class Net {
 
 
 
-			nodeId++;
+			
 		}
 
 	}
