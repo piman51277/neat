@@ -14,6 +14,10 @@ interface PopulationOptions {
 	}
 }
 
+interface testCallback{
+	(nets:Net[]):Net[]
+}
+
 export class Population {
 	nets: Net[]
 	links: string[]
@@ -52,5 +56,8 @@ export class Population {
 		if (pos >= 0) return pos;
 		this.links.push(id);
 		return this.links.length - 1;
+	}
+	test(callback:testCallback):void{
+		this.nets = callback(this.nets);
 	}
 }
