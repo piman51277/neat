@@ -23,16 +23,18 @@ export class Net {
 			const node = new Node({
 				id: this.nodes.length,
 				type: "input",
-				layer: 0
+				layer: 0,
+				bias: Math.random() * 4 - 2
 			});
 			this.nodes.push(node);
-			
+
 		}
 		for (let i = 0; i < outputs; i++) {
 			const node = new Node({
 				id: this.nodes.length,
 				type: "output",
-				layer: Infinity
+				layer: 1,
+				bias: Math.random() * 4 - 2
 			});
 			this.nodes.push(node);
 
@@ -42,19 +44,14 @@ export class Net {
 					out: node,
 					enabled: true,
 					weight: Math.random() * 4 - 2,
-					innovation: this.parent.getLinkInnovation(`${selectedInput}_${this.nodes.length}`)
+					innovation: this.parent.getLinkInnovation(`${selectedInput}-${this.nodes.length - 1}`)
 				});
 
 				//add link to referenced nodes
 				this.nodes[selectedInput].outboundConnections.push(link);
 				node.inboundConnections.push(link);
-
 				this.links.push(link);
 			}
-
-
-
-			
 		}
 
 	}
@@ -97,5 +94,174 @@ export class Net {
 		}
 
 		return (this.parent.comConfig.excess * excess / this.parent.links.length) + (this.parent.comConfig.disjoint * disjoint / this.parent.links.length) + this.parent.comConfig.weightDifference * (weightDifferenceSum / matching);
+	}
+	addRandomNode(): void {
+		//get a current link
+		const avalibleLinkIndexes = this.links.map((n, i) => n.enabled ? i : -1).filter(n => n >= 0);
+		const selectedIndex = avalibleLinkIndexes[Math.floor(Math.random() * avalibleLinkIndexes.length)];
+
+		//turn it off
+		this.links[selectedIndex].enabled = false;
+
+		//add a new node
+		const node = new Node({
+			id: this.nodes.length,
+			type: "hidden",
+			bias: Math.random() * 4 - 2
+		});
+
+		//create links to and from this new Node
+		const inboundLink = new Link({
+			innovation: this.parent.getLinkInnovation(`${this.links[selectedIndex].in.id}-${node.id}`),
+			in: this.links[selectedIndex].in,
+			out: node,
+			enabled: true,
+			weight: 1
+		});
+		const outboundLink = new Link({
+			innovation: this.parent.getLinkInnovation(`${node.id}-${this.links[selectedIndex].out.id}`),
+			in: node,
+			out: this.links[selectedIndex].out,
+			enabled: true,
+			weight: 1
+		});
+
+		//node's layer is simply the layer of the imput + 1;
+		node.layer = this.links[selectedIndex].in.layer + 1;
+
+		//add one to layer of all affected nodes
+		const threshold = node.layer == this.links[selectedIndex].out.layer ? node.layer : node.layer + 1;
+		this.nodes.map(n => {
+			if (n.layer >= threshold) n.layer++;
+			return n;
+		});
+
+		//add new links to node
+		node.inboundConnections.push(inboundLink);
+		node.outboundConnections.push(outboundLink);
+
+		//add all new links/nodes to this
+		this.nodes.push(node);
+		this.links.push(inboundLink);
+		this.links.push(outboundLink);
+
+		//remove disabled node from relevant nodes
+		this.links[selectedIndex].in.purgeDisabled();
+		this.links[selectedIndex].out.purgeDisabled();
+
+
+	}
+	addRandomLink(): void {
+
+		//sort each node into buckets
+		const maxLayer = this.nodes.find(n => n.type == "output").layer;
+		const nodeLayers: Array<Node[]> = [];
+		for (let i = 0; i <= maxLayer; i++) {
+			nodeLayers.push([]);
+		}
+		for (const node of this.nodes) {
+			nodeLayers[node.layer].push(node);
+		}
+
+		//get saturation numbers for every layer
+		const saturationNumbers = new Array(maxLayer + 1).fill(0);
+		// eslint-disable-next-line for-direction
+		for (let i = maxLayer - 1; i >= 0; i--) {
+			saturationNumbers[i] = saturationNumbers[i + 1] + nodeLayers[i + 1].length;
+		}
+
+		//select valid node, weighted on num avalible new connections
+		const validNodes = [];
+		const culmWeights = [];
+		let currentTotal = 0;
+		for (const node of this.nodes) {
+			if (node.outboundConnections.length < saturationNumbers[node.layer] && node.type != "output") {
+				//get all possible connections
+				validNodes.push(node.id);
+				currentTotal += saturationNumbers[node.layer] - node.outboundConnections.length;
+				culmWeights.push(currentTotal);
+			}
+		}
+
+		//if there are no valid input nodes, exit
+		if(validNodes.length == 0) return;
+
+		//binary search to select random node
+		const targetValue = Math.random() * currentTotal;
+		let currentSearch = culmWeights;
+		while (currentSearch.length > 1) {
+			if (currentSearch.length % 2 == 0) {
+				const middle = currentSearch.length / 2;
+				if ((currentSearch[middle] + currentSearch[middle - 1]) * 0.5 < targetValue) {
+					currentSearch = currentSearch.slice(0, middle);
+				} else {
+					currentSearch = currentSearch.slice(middle);
+				}
+			} else {
+				const middle = Math.floor(currentSearch.length / 2);
+				if (currentSearch[middle] < targetValue) {
+					currentSearch = currentSearch.slice(0, middle);
+				} else {
+					currentSearch = currentSearch.slice(middle + 1);
+				}
+			}
+		}
+
+		const selectedNodeId = validNodes[culmWeights.indexOf(currentSearch[0])];
+		const selectedNode = this.nodes[selectedNodeId];
+		const existingNodeConnections = new Set(selectedNode.outboundConnections.map(n => n.out.id));
+
+		//get valid connections for selected node
+
+		//compile valid output Nodes
+		const validIds = [];
+		for (let i = selectedNode.layer + 1; i < nodeLayers.length; i++) {
+			nodeLayers[i].forEach(n => {
+				if (!existingNodeConnections.has(n.id)) validIds.push(n.id);
+			});
+		}
+
+		//select random output Node
+		const selectedOutputNodeId = validIds[Math.floor(Math.random() * validIds.length)];
+
+		//create new Link
+		const newLink = new Link({
+			in:selectedNode,
+			out:this.nodes[selectedOutputNodeId],
+			weight:Math.random()*4 -2,
+			innovation:this.parent.getLinkInnovation(`${selectedNodeId}-${selectedOutputNodeId}`),
+			enabled:true
+		});
+
+		//assign link to existing nodes
+		this.nodes[selectedNodeId].outboundConnections.push(newLink);
+		this.nodes[selectedOutputNodeId].inboundConnections.push(newLink);
+
+		//insert new Link into this
+		this.links.push(newLink);
+
+	}
+	mutate(): void {
+		const randomValue = Math.random();
+
+		//weight mutation -> 70%
+		if (randomValue < 0.7){ 
+			this.links.forEach(n => n.mutate());
+		}
+
+		//bias mutation -> 60%
+		if (randomValue < 0.6) {
+			this.nodes.forEach(n => n.mutate());
+		}
+
+		//add node mutation -> 5%
+		if (randomValue < 0.05) {
+			this.addRandomNode();
+		}
+
+		//add link mutation -> 20%
+		if (randomValue < 0.2) {
+			this.addRandomLink();
+		}
 	}
 }

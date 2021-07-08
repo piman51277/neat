@@ -27,4 +27,8 @@ export class Link {
 	getId():string {
 		return `${this.in.id}-${this.out.id}`;
 	}
+	//randomly changes weight
+	mutate():void{
+		this.weight += Math.random() * 0.02 - 0.01;
+	}
 }
