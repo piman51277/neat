@@ -228,7 +228,7 @@ export class Net {
 		this.links.push(newLink);
 
 	}
-	mutate(): void {
+	mutate(): Net {
 		const randomValue = Math.random();
 
 		//weight mutation -> 70%
@@ -250,6 +250,8 @@ export class Net {
 		if (randomValue < 0.2) {
 			this.addRandomLink();
 		}
+
+		return this;
 	}
 	private compareGenomes(other: Net): genomeComparison {
 		const results: genomeComparison = {
