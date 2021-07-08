@@ -7,6 +7,13 @@ interface netOptions {
 	links?: Link[]
 	parent: Network
 }
+
+interface genomeComparison {
+	shared: Link[][]
+	excess: Link[]
+	disjoint: Link[]
+}
+
 export class Net {
 	nodes: Node[]
 	links: Link[]
@@ -67,33 +74,13 @@ export class Net {
 		return output;
 	}
 	getCompatibilty(other: Net): number {
-		//map both other.links and this.links onto arrays with index being innovation number
-		const myLinks: Link[] = [];
-		const otherLinks: Link[] = [];
-		this.links.forEach(n => myLinks[n.innovation] = n);
-		other.links.forEach(n => otherLinks[n.innovation] = n);
+		const { disjoint, excess, shared } = this.compareGenomes(other);
 
-		let disjoint = 0;
-		let excess = 0;
-		let matching = 0;
+		//compute weight difference sum
 		let weightDifferenceSum = 0;
-		for (let i = 0; i < Math.max(myLinks.length, otherLinks.length); i++) {
-			if (myLinks[i] != undefined && otherLinks[i] != undefined) {
-				//they are matching
-				weightDifferenceSum += myLinks[i].weight - otherLinks[i].weight;
-				matching++;
-			} else if (myLinks[i] == undefined && otherLinks[i] == undefined) {
-				//do nothing
-			} else if ((myLinks[i] != undefined && i > otherLinks.length - 1) || (otherLinks[i] != undefined && i > myLinks.length - 1)) {
-				//they are excess
-				excess++;
-			} else {
-				//they are disjoint
-				disjoint++;
-			}
-		}
+		shared.forEach(n => weightDifferenceSum += n[0].weight - n[1].weight);
 
-		return (this.parent.comConfig.excess * excess / this.parent.links.length) + (this.parent.comConfig.disjoint * disjoint / this.parent.links.length) + this.parent.comConfig.weightDifference * (weightDifferenceSum / matching);
+		return (this.parent.comConfig.excess * excess.length / this.parent.links.length) + (this.parent.comConfig.disjoint * disjoint.length / this.parent.links.length) + this.parent.comConfig.weightDifference * (weightDifferenceSum / shared.length);
 	}
 	addRandomNode(): void {
 		//get a current link
@@ -155,7 +142,7 @@ export class Net {
 
 		//sort each node into buckets
 		const maxLayer = this.nodes.find(n => n.type == "output").layer;
-		const nodeLayers: Array<Node[]> = [];
+		const nodeLayers: Node[][] = [];
 		for (let i = 0; i <= maxLayer; i++) {
 			nodeLayers.push([]);
 		}
@@ -184,7 +171,7 @@ export class Net {
 		}
 
 		//if there are no valid input nodes, exit
-		if(validNodes.length == 0) return;
+		if (validNodes.length == 0) return;
 
 		//binary search to select random node
 		const targetValue = Math.random() * currentTotal;
@@ -226,11 +213,11 @@ export class Net {
 
 		//create new Link
 		const newLink = new Link({
-			in:selectedNode,
-			out:this.nodes[selectedOutputNodeId],
-			weight:Math.random()*4 -2,
-			innovation:this.parent.getLinkInnovation(`${selectedNodeId}-${selectedOutputNodeId}`),
-			enabled:true
+			in: selectedNode,
+			out: this.nodes[selectedOutputNodeId],
+			weight: Math.random() * 4 - 2,
+			innovation: this.parent.getLinkInnovation(`${selectedNodeId}-${selectedOutputNodeId}`),
+			enabled: true
 		});
 
 		//assign link to existing nodes
@@ -245,7 +232,7 @@ export class Net {
 		const randomValue = Math.random();
 
 		//weight mutation -> 70%
-		if (randomValue < 0.7){ 
+		if (randomValue < 0.7) {
 			this.links.forEach(n => n.mutate());
 		}
 
@@ -263,5 +250,41 @@ export class Net {
 		if (randomValue < 0.2) {
 			this.addRandomLink();
 		}
+	}
+	private compareGenomes(other: Net): genomeComparison {
+		const results: genomeComparison = {
+			shared: [],
+			excess: [],
+			disjoint: []
+		};
+
+		//map both other.links and this.links onto arrays with index being innovation number
+		const myLinks: Link[] = [];
+		const otherLinks: Link[] = [];
+		this.links.forEach(n => myLinks[n.innovation] = n);
+		other.links.forEach(n => otherLinks[n.innovation] = n);
+
+		for (let i = 0; i < Math.max(myLinks.length, otherLinks.length); i++) {
+			if (myLinks[i] != undefined && otherLinks[i] != undefined) {
+				//they are matching
+				results.shared.push([myLinks[i], otherLinks[i]]);
+			} else if (myLinks[i] == undefined && otherLinks[i] == undefined) {
+				//do nothing
+			} else if (myLinks[i] != undefined && i > otherLinks.length - 1) {
+				//they are excess
+				results.excess.push(myLinks[i]);
+			} else if (otherLinks[i] != undefined && i > myLinks.length - 1) {
+				//they are excess
+				results.excess.push(otherLinks[i]);
+			} else if (otherLinks[i] != undefined) {
+				//they are disjoint
+				results.disjoint.push(otherLinks[i]);
+			} else {
+				results.disjoint.push(myLinks[i]);
+			}
+		}
+
+		return results;
+
 	}
 }
