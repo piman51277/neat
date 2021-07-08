@@ -33,12 +33,29 @@ export class Node {
 	}
 	getValue(): number {
 		let sum = 0;
-		this.inboundConnections.filter(n=>n.enabled).forEach(n => sum += n.getLinkValue());
+		this.inboundConnections.filter(n => n.enabled).forEach(n => sum += n.getLinkValue());
 		this.sum = sum + this.bias;
 		return this.value = sigmoid(sum);
 	}
 	//randomly changes bias
 	mutate(): void {
 		this.bias += Math.random() * 0.02 - 0.01;
+	}
+	shallowClone(): Node {
+		return new Node({
+			id: this.id,
+			sum: this.sum || 0,
+			value: this.value || 0,
+			bias: this.bias || 0,
+			layer: this.layer,
+			type: this.type
+		});
+	}
+	//use only when recalculating ALL nodes
+	getLayer():number{
+		if(this.layer < 0){
+			this.layer = Math.max(...this.inboundConnections.map(n=>n.in.getLayer())) + 1;
+		}
+		return this.layer;
 	}
 }

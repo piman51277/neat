@@ -113,7 +113,9 @@ export class Net {
 			weight: 1
 		});
 
-		//node's layer is simply the layer of the imput + 1;
+		//below is simply a far more efficient version of this.recalculateNodeLayers(), as we only need to think about ONE node
+
+		//node's layer is simply the layer of the input + 1;
 		node.layer = this.links[selectedIndex].in.layer + 1;
 
 		//add one to layer of all affected nodes
@@ -127,12 +129,14 @@ export class Net {
 		node.inboundConnections.push(inboundLink);
 		node.outboundConnections.push(outboundLink);
 
+		//add new link to connecting nodes
+		this.links[selectedIndex].out.inboundConnections.push(outboundLink);
+		this.links[selectedIndex].in.outboundConnections.push(inboundLink);
+
 		//add all new links/nodes to this
 		this.nodes.push(node);
 		this.links.push(inboundLink);
 		this.links.push(outboundLink);
-
-
 	}
 	addRandomLink(): void {
 
@@ -282,5 +286,86 @@ export class Net {
 
 		return results;
 
+	}
+	private recalculateNodeLayers(): void {
+		//set all hidden & output node layers to -1;
+		this.nodes.filter(n => n.type != "input").forEach(n => n.layer = -1);
+
+		//get all output nodes and recalculate thier layer
+		const outputLayer = Math.max(...this.nodes.filter(n => n.type == "output").map(n => n.getLayer()));
+
+		//set all output nodes to outputLayer
+		this.nodes.filter(n => n.type == "output").map(n => n.layer = outputLayer);
+	}
+	crossover(other: Net): Net {
+		let nodes: Node[] = [];
+
+		//insert nodes randomly from parents
+		for (let node = 0; node < Math.max(this.nodes.length, other.nodes.length); node++) {
+			if (this.nodes[node] != undefined && other.nodes[node] != undefined) {
+				if (Math.random() < 0.5) {
+					nodes.push(this.nodes[node].shallowClone());
+				} else {
+					nodes.push(other.nodes[node].shallowClone());
+				}
+				//TODO assign new node the higher layer number between the two
+			} else if (this.nodes[node] != undefined) {
+				nodes.push(this.nodes[node].shallowClone());
+			} else if (other.nodes[node] != undefined) {
+				nodes.push(other.nodes[node].shallowClone());
+			}
+		}
+
+		//sort nodes
+		nodes = nodes.sort((a, b) => a.id - b.id);
+
+		//gather relationships of links between both Nets
+		const { disjoint, shared, excess } = this.compareGenomes(other);
+
+		//compile relationships into links
+		const links: Link[] = [];
+
+		//randomly assign shared links
+		for (const link of shared) {
+			const targetLink = link[Math.round(Math.random())];
+			const newLink = new Link({
+				innovation: targetLink.innovation,
+				enabled: targetLink.enabled,
+				weight: targetLink.weight,
+				in: nodes[targetLink.in.id],
+				out: nodes[targetLink.out.id]
+			});
+			nodes[targetLink.in.id].outboundConnections.push(newLink);
+			nodes[targetLink.out.id].inboundConnections.push(newLink);
+			links.push(newLink);
+		}
+
+		//assign shared and excess links
+		const disjointAndExcess = disjoint.concat(excess);
+		for (const link of disjointAndExcess) {
+			const targetLink = link[0];
+			const newLink = new Link({
+				innovation: targetLink.innovation,
+				enabled: targetLink.enabled,
+				weight: targetLink.weight,
+				in: nodes[targetLink.in.id],
+				out: nodes[targetLink.out.id]
+			});
+			nodes[targetLink.in.id].outboundConnections.push(newLink);
+			nodes[targetLink.out.id].inboundConnections.push(newLink);
+			links.push(newLink);
+		}
+
+		//create a new Net based on these nodes and links
+		const newNet = new Net({
+			nodes,
+			links,
+			parent: this.parent
+		});
+
+		//recalcuate node layers for new Net
+		newNet.recalculateNodeLayers();
+
+		return newNet;
 	}
 }
