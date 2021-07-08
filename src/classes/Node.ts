@@ -33,14 +33,9 @@ export class Node {
 	}
 	getValue(): number {
 		let sum = 0;
-		this.inboundConnections.forEach(n => sum += n.getLinkValue());
+		this.inboundConnections.filter(n=>n.enabled).forEach(n => sum += n.getLinkValue());
 		this.sum = sum + this.bias;
 		return this.value = sigmoid(sum);
-	}
-	purgeDisabled():void{
-		//remove any disabled connections
-		this.inboundConnections = this.inboundConnections.filter(n=>n.enabled);
-		this.outboundConnections = this.outboundConnections.filter(n=>n.enabled);
 	}
 	//randomly changes bias
 	mutate(): void {

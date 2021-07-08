@@ -132,10 +132,6 @@ export class Net {
 		this.links.push(inboundLink);
 		this.links.push(outboundLink);
 
-		//remove disabled node from relevant nodes
-		this.links[selectedIndex].in.purgeDisabled();
-		this.links[selectedIndex].out.purgeDisabled();
-
 
 	}
 	addRandomLink(): void {
