@@ -1,6 +1,6 @@
 import { Net } from './Net';
 
-interface NetworkOptions {
+interface PopulationOptions {
 	nets?: Net[]
 	links?: string[]
 	inputSize: number
@@ -10,11 +10,11 @@ interface NetworkOptions {
 		excess: number
 		disjoint: number
 		weightDifference: number
-		threshold:number
+		threshold: number
 	}
 }
 
-export class Network {
+export class Population {
 	nets: Net[]
 	links: string[]
 	inputSize: number
@@ -24,9 +24,9 @@ export class Network {
 		excess: number
 		disjoint: number
 		weightDifference: number
-		threshold:number
+		threshold: number
 	}
-	constructor(options: NetworkOptions) {
+	constructor(options: PopulationOptions) {
 		this.links = options.links || [];
 		this.nets = options.nets || [];
 		this.inputSize = options.inputSize;

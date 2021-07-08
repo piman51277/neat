@@ -1,11 +1,11 @@
 import { Node } from './Node';
 import { Link } from './Link';
-import { Network } from './Network';
+import { Population } from './Population';
 
 interface netOptions {
 	nodes?: Node[]
 	links?: Link[]
-	parent: Network
+	parent: Population
 }
 
 interface genomeComparison {
@@ -17,13 +17,13 @@ interface genomeComparison {
 export class Net {
 	nodes: Node[]
 	links: Link[]
-	parent: Network
+	parent: Population
 	fitness: number
 	constructor(options: netOptions) {
 		this.nodes = options.nodes || [];
 		this.links = options.links || [];
 		this.parent = options.parent;
-		this.fitness = 0; //this will be set by the testing function in Network
+		this.fitness = 0; //this will be set by the testing function in Population
 	}
 	initialize(inputs: number, outputs: number): void {
 		for (let i = 0; i < inputs; i++) {
