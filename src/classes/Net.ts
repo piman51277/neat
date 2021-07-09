@@ -229,25 +229,23 @@ export class Net {
 
 	}
 	mutate(): Net {
-		const randomValue = Math.random();
-
 		//weight mutation -> 70%
-		if (randomValue < 0.7) {
+		if (Math.random() < 0.7) {
 			this.links.forEach(n => n.mutate());
 		}
 
 		//bias mutation -> 60%
-		if (randomValue < 0.6) {
+		if (Math.random() < 0.6) {
 			this.nodes.forEach(n => n.mutate());
 		}
 
 		//add node mutation -> 5%
-		if (randomValue < 0.05) {
+		if (Math.random() < 0.05) {
 			this.addRandomNode();
 		}
 
 		//add link mutation -> 20%
-		if (randomValue < 0.2) {
+		if (Math.random() < 0.2) {
 			this.addRandomLink();
 		}
 
@@ -289,13 +287,24 @@ export class Net {
 		return results;
 
 	}
-	private recalculateNodeLayers(): void {
-		//set all hidden & output node layers to -1;
-		this.nodes.filter(n => n.type != "input").forEach(n => n.layer = -1);
+	recalculateNodeLayers(): void {
+		//set all hidden & output node layers to an impossible layer number;
+		this.nodes.filter(n => n.type != "input").forEach(n => n.layer = this.nodes.length + 3);
 
-		//get all output nodes and recalculate thier layer
-		const outputLayer = Math.max(...this.nodes.filter(n => n.type == "output").map(n => n.getLayer()));
+		//screw stack size limit
+		let currentLayer = 1;
+		while (currentLayer < this.nodes.length + 2 && !this.nodes.filter(n => n.type == "output").every(n=>n.inboundConnections.every(e => e.in.layer < n.layer))) {
+			this.nodes.filter(n => n.layer != 0).forEach(n => {
+				//if n has a connection to a node with layer currentLayer -1, n.layer = currentLayer
+				if (n.inboundConnections.some(e => e.in.layer == currentLayer-1)) {
+					n.layer = currentLayer;
+				}
+			});
 
+			currentLayer++;
+		}
+
+		const outputLayer = Math.max(...this.nodes.filter(n => n.type == "output").map(n => n.layer));
 		//set all output nodes to outputLayer
 		this.nodes.filter(n => n.type == "output").map(n => n.layer = outputLayer);
 	}
@@ -342,10 +351,10 @@ export class Net {
 			links.push(newLink);
 		}
 
-		//assign shared and excess links
+		//assign disjoint and excess links
 		const disjointAndExcess = disjoint.concat(excess);
 		for (const link of disjointAndExcess) {
-			const targetLink = link[0];
+			const targetLink = link;
 			const newLink = new Link({
 				innovation: targetLink.innovation,
 				enabled: targetLink.enabled,

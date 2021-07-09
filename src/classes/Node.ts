@@ -51,11 +51,4 @@ export class Node {
 			type: this.type
 		});
 	}
-	//use only when recalculating ALL nodes
-	getLayer():number{
-		if(this.layer < 0){
-			this.layer = Math.max(...this.inboundConnections.map(n=>n.in.getLayer())) + 1;
-		}
-		return this.layer;
-	}
 }
